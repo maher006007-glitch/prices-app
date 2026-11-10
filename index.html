@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173c35">
+<title>دفتر أسعار البضائع</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f4;color:#202c29;font-family:Arial,sans-serif}
+header{background:#173c35;color:white;padding:22px 16px}
+header h2{margin:0 0 7px}
+header p{margin:0;color:#d6e5df;font-size:14px}
+main{max-width:650px;margin:auto;padding:15px}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000c}
+h3{margin:0 0 15px;color:#173c35}
+label{display:block;font-size:14px;margin:12px 0 6px}
+input{width:100%;padding:12px;border:1px solid #d5ded9;border-radius:9px;font-size:16px;background:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{border:0;border-radius:9px;padding:12px;font-size:15px;cursor:pointer}
+.primary{background:#176b50;color:white;width:100%;margin-top:16px}
+.secondary{background:#e5eee9;color:#174a38}
+.danger{background:#fbe7e7;color:#a52222}
+.actions{display:flex;gap:8px;margin-top:12px}
+.actions button{flex:1}
+.search{margin-bottom:12px}
+.item{border:1px solid #e0e7e3;border-radius:11px;padding:13px;margin:10px 0}
+.item h4{margin:0 0 9px;color:#174a38;font-size:17px}
+.info{font-size:14px;line-height:1.9;color:#46544d}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.price{background:#f0f5f2;padding:9px;border-radius:8px;font-size:13px}
+.price b{display:block;margin-top:4px;color:#176b50}
+.small{font-size:12px;color:#77827c}
+.empty{text-align:center;padding:25px;color:#89928d}
+footer{text-align:center;color:#89928d;font-size:12px;padding:20px}
+</style>
+</head>
+<body>
+<header>
+<h2>دفتر أسعار البضائع</h2>
+<p>إدارة السلع والموديلات وأسعار البيع والشراء</p>
+</header>
+
+<main>
+<section class="card">
+<h3 id="formTitle">إضافة سلعة جديدة</h3>
+
+<form id="productForm">
+<div class="grid">
+<div>
+<label>رمز السلعة *</label>
+<input id="code" required placeholder="مثلاً B001">
+</div>
+<div>
+<label>الموديل</label>
+<input id="model" placeholder="رقم أو اسم الموديل">
+</div>
+</div>
+
+<label>اسم السلعة *</label>
+<input id="name" required placeholder="اسم السلعة">
+
+<label>سعر الشراء</label>
+<input id="buy" type="number" min="0" step="any" placeholder="0">
+
+<h3 style="margin-top:20px">أسعار البيع</h3>
+<div class="grid">
+<div>
+<label>السعر الأول</label>
+<input id="p1" type="number" min="0" step="any">
+</div>
+<div>
+<label>السعر الثاني</label>
+<input id="p2" type="number" min="0" step="any">
+</div>
+<div>
+<label>السعر الثالث</label>
+<input id="p3" type="number" min="0" step="any">
+</div>
+<div>
+<label>السعر الرابع</label>
+<input id="p4" type="number" min="0" step="any">
+</div>
+</div>
+
+<label>ملاحظات</label>
+<input id="notes" placeholder="ملاحظات اختيارية">
+
+<button class="primary" id="saveBtn" type="submit">حفظ السلعة</button>
+<button class="secondary" type="button" id="cancelBtn" style="display:none;width:100%;margin-top:8px">إلغاء التعديل</button>
+</form>
+</section>
+
+<section class="card">
+<h3>السلع المسجلة</h3>
+<input class="search" id="search" placeholder="ابحث بالرمز أو الاسم أو الموديل...">
+<div id="count" class="small"></div>
+<div id="list"></div>
+</section>
+</main>
+
+<footer>دفتر أسعار البضائع © 2026</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const fields=['code','model','name','buy','p1','p2','p3','p4','notes'];
+let products=[];
+let editing=null;
+
+try{
+products=JSON.parse(localStorage.getItem('pricesProducts')||'[]');
+if(!Array.isArray(products))products=[];
+}catch(e){products=[]}
+
+function persist(){
+localStorage.setItem('pricesProducts',JSON.stringify(products));
+}
+
+function number(v){
+return v===''?'—':Number(v).toLocaleString('en-US');
+}
+
+function resetForm(){
+$('productForm').reset();
+editing=null;
+$('formTitle').textContent='إضافة سلعة جديدة';
+$('saveBtn').textContent='حفظ السلعة';
+$('cancelBtn').style.display='none';
+}
+
+$('productForm').addEventListener('submit',e=>{
+e.preventDefault();
+const item={};
+fields.forEach(f=>item[f]=$(f).value.trim());
+
+if(!item.code||!item.name){
+alert('يرجى إدخال رمز السلعة واسمها');
+return;
+}
+
+if(products.some((p,i)=>p.code.toLowerCase()===item.code.toLowerCase()&&i!==editing)){
+alert('هذا الرمز مسجل مسبقاً، اختر رمزاً آخر');
+return;
+}
+
+if(editing===null){
+item.id=Date.now().toString();
+products.unshift(item);
+}else{
+item.id=products[editing].id;
+products[editing]=item;
+}
+persist();
+resetForm();
+render();
+alert('تم حفظ السلعة بنجاح');
+});
+
+function editItem(id){
+editing=products.findIndex(p=>p.id===id);
+if(editing<0)return;
+const p=products[editing];
+fields.forEach(f=>$(f).value=p[f]||'');
+$('formTitle').textContent='تعديل بيانات السلعة';
+$('saveBtn').textContent='حفظ التعديلات';
+$('cancelBtn').style.display='block';
+window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function deleteItem(id){
+if(!confirm('هل تريد حذف هذه السلعة؟'))return;
+products=products.filter(p=>p.id!==id);
+persist();
+render();
+}
+
+$('cancelBtn').onclick=resetForm;
+
+function render(){
+const q=$('search').value.trim().toLowerCase();
+const filtered=products.filter(p=>
+[p.code,p.name,p.model].join(' ').toLowerCase().includes(q)
+);
+$('count').textContent='عدد السلع: '+products.length+' | نتائج البحث: '+filtered.length;
+
+if(!filtered.length){
+$('list').innerHTML='<div class="empty">لا توجد سلع مسجلة</div>';
+return;
+}
+
+$('list').innerHTML=filtered.map(p=>`
+<div class="item">
+<h4>${esc(p.name)}</h4>
+<div class="info">
+رمز السلعة: <b>${esc(p.code)}</b><br>
+الموديل: ${esc(p.model||'—')}<br>
+سعر الشراء: <b>${number(p.buy)}</b><br>
+${p.notes?'ملاحظات: '+esc(p.notes):''}
+</div>
+<div class="prices">
+${[1,2,3,4].map(n=>`
+<div class="price">سعر البيع ${n}<b>${number(p['p'+n])}</b></div>
+`).join('')}
+</div>
+<div class="actions">
+<button class="secondary" data-edit="${p.id}">تعديل</button>
+<button class="danger" data-delete="${p.id}">حذف</button>
+</div>
+</div>
+`).join('');
+
+$('list').querySelectorAll('[data-edit]').forEach(b=>
+b.onclick=()=>editItem(b.dataset.edit));
+$('list').querySelectorAll('[data-delete]').forEach(b=>
+b.onclick=()=>deleteItem(b.dataset.delete));
+}
+
+function esc(s){
+return String(s??'').replace(/[&<>"']/g,c=>({
+'&':'&amp;','<':'&lt;','>':'&gt;',
+'"':'&quot;',"'":'&#39;'
+}[c]));
+}
+
+$('search').addEventListener('input',render);
+render();
+</script>
+</body>
+</html>
